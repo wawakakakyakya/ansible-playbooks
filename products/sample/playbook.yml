@@ -1,0 +1,12 @@
+---
+# This playbook deploys the whole application stack in this site.
+
+- name: Configure all hosts
+  hosts:
+    - targetHost1
+  roles:
+    - update_packages
+    - make_dirs
+    - setup_ssh
+    - install_apps
+    - install_docker
