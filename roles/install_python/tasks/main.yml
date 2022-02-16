@@ -1,0 +1,30 @@
+---
+# These tasks install Apache HTTPD server.
+
+- name: install pyenv
+  ansible.builtin.git:
+    repo: https://github.com/pyenv/pyenv.git
+    dest: "{{ ansible_user_dir }}/.pyenv"
+
+- name: copy pyenv.env
+  ansible.builtin.copy:
+    src: pyenv.env
+    dest: "{{ ansible_user_dir }}/.envs/pyenv.env"
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
+    mode: '0644'
+
+- name: write pyenv setting to bash_profile
+  lineinfile:
+    path: "{{ ansible_user_dir }}/.bash_profile"
+    # search_string: 'goenv'
+    insertafter: '^<pyenv \/>\n'
+    line: 'source $HOME/.envs/pyenv.env'
+
+- name: check installed versions
+  ansible.builtin.shell: source ~/.bash_profile; pyenv versions
+  register: python_versions
+
+- name: install python "{{ python }}" if not installed
+  ansible.builtin.shell: source ~/.bash_profile; pyenv install "{{ python }}"
+  when: '"{{ python }}" not in "{{ python_versions.stdout }}"'

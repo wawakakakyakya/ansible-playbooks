@@ -1,0 +1,26 @@
+- name: Ubuntu/Debian
+  block:
+    - name: Update all packages to their latest version with Debian/Ubuntu
+      apt:
+        name: "*"
+        state: latest
+
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Update all packages to their latest version with RedHat/CentOS
+  block:
+    - name: Update all packages to their latest version with RedHat/CentOS7
+      yum:
+        name: "*"
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '7'
+      become: true
+
+    - name: Update all packages to their latest version with RedHat/CentOS8
+      dnf:
+        name: "*"
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '8'
+      become: true
+
+  when: ansible_facts['os_family'] == "RedHat"
