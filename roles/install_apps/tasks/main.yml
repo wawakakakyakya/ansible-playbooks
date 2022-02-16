@@ -1,0 +1,15 @@
+- name: install apps with Redhat/CentOS
+  yum:
+    name: "{{  item  }}"
+    state: latest
+  loop: "{{ install_apps }} "
+  become: true
+  when: ansible_facts['os_family'] == "RedHat"
+
+- name: install apps with Debian/Ubuntu
+  apt:
+    name: "{{  item  }}"
+    state: latest
+  loop: "{{  install_apps  }}"
+  become: true
+  when: ansible_facts['os_family'] == "Debian"

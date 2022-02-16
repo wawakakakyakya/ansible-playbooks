@@ -1,0 +1,72 @@
+- name: check docker installed
+  ansible.builtin.command: which docker
+  register: is_docker_installed
+  ignore_errors: true
+
+- name: Install the latest version of docker
+  block:
+    - name: add docker repositories
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/
+        mode: "0440"
+      become: true
+    - name: Install the latest version of Docker
+      dnf:
+        name: docker-ce
+        state: latest
+      become: true
+  when: >
+    ansible_facts.os_family == "RedHat"
+    and is_docker_installed.rc == 1
+    and ansible_facts.distribution_major_version == '8'
+
+- name: install apps with Debian/Ubuntu
+  block:
+    - name: add require packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - curl
+        - apt-transport-https
+      become: true
+    - name: Add Docker's official GPG key
+      ansible.builtin.command: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+    - name: setup repositories
+      ansible.builtin.template:
+        src: config.ini.j2
+        dest: /etc/apt/sources.list.d/docker.list
+    - name: install docker with Debian/Ubuntu
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - docker-ce
+        - docker-ce-cli
+        - containerd.io
+      become: true
+  when: >
+    ansible_facts.os_family == "Debian"
+    and is_docker_installed.rc == 1
+
+- name: add "{{ ansible_user }}" to docker group
+  user:
+    name: "{{ ansible_user }}"
+    append: yes
+    groups: docker
+  become: true
+
+- name: start docker
+  ansible.builtin.systemd:
+    state: started
+    name: docker
+    enabled: yes
+  become: true
+
+- name: add docker-compose
+  get_url:
+    url: https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64
+    dest: /usr/local/bin/docker-compose
+    mode: 755
+  become: true

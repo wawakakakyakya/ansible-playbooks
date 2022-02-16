@@ -1,0 +1,63 @@
+- name: Install golang to system
+  block:
+    - name: Get golang
+      get_url:
+        url: https://go.dev/dl/go1.17.6.linux-amd64.tar.gz
+        dest: /tmp/golang.tar.gz
+        mode: "755"
+    - name: unarchive golang
+      ansible.builtin.unarchive:
+        src: /tmp/golang.tar.gz
+        dest: /usr/local
+        remote_src: yes
+      become: true
+    - name: Add path
+      ansible.builtin.lineinfile:
+        path: "/root/.bash_profile"
+        insertafter: "^PATH="
+        line: "PATH=$PATH:/usr/local/go/bin"
+        firstmatch: yes
+        state: present
+      become: true
+  when: "{{ install_go_system }}"
+
+- name: Install golang with goenv
+  block:
+    - name: install goenv
+      ansible.builtin.git:
+        repo: https://github.com/syndbg/goenv.git
+        dest: "{{ ansible_user_dir }}/.goenv"
+
+    - name: copy goenv.env
+      ansible.builtin.copy:
+        src: goenv.env
+        dest: "{{ ansible_user_dir }}/.envs/goenv.env"
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: "0644"
+
+    - name: write goenv setting to bash_profile
+      ansible.builtin.lineinfile:
+        path: "{{ ansible_user_dir }}/.bash_profile"
+        # search_string: 'goenv'
+        line: "source $HOME/.envs/goenv.env"
+
+    - name: check installed versions
+      ansible.builtin.shell: >
+        source ~/.bash_profile
+        goenv versions
+      register: go_versions
+      ignore_errors: true
+
+    - name: install golang "{{ golang }}" if not installed
+      ansible.builtin.shell: >
+        source ~/.bash_profile
+        goenv install "{{ golang }}"
+      when: '"{{ golang }}" not in "{{ go_versions.stdout }}"'
+
+    - name: install golang "{{ golang }}" if not installed
+      ansible.builtin.shell: >
+        source ~/.bash_profile
+        goenv global "{{ golang }}"
+      when: "{{ goenv_global }}"
+  when: ! "{{ install_go_system }}"
