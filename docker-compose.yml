@@ -1,0 +1,43 @@
+version: "3.7"
+services:
+  ansible:
+    build:
+      context: ./docker/ansible
+    image: ansible
+    container_name: ansible
+    privileged: true
+    hostname: ansible
+    networks:
+      - ansible_test
+    volumes:
+      - .:/opt/ansible_playbooks
+    tty: true
+  product:
+    build:
+      context: ./docker/product
+      args:
+        # write to .env
+        USERNAME: ${USERNAME}
+        PASSWORD: ${PASSWORD}
+    image: product
+    hostname: product
+    container_name: product
+    networks:
+      - ansible_test
+    volumes:
+      - ./docker/product/share:/home/${USERNAME}/share
+    privileged: true
+    tty: true
+  base_cent7:
+    build:
+      context: ./docker/base_cent7
+    image: base_cent7
+    networks:
+      - ansible_test
+    privileged: true
+    tty: true
+
+networks:
+  ansible_test:
+    # name: ansible-nw
+    driver: bridge
