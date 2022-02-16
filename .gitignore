@@ -1,0 +1,15 @@
+# Created by https://www.toptal.com/developers/gitignore/api/ansible
+# Edit at https://www.toptal.com/developers/gitignore?templates=ansible
+
+### Ansible ###
+*.retry
+
+# End of https://www.toptal.com/developers/gitignore/api/ansible
+
+# ignore editor
+.idea
+.vscode
+.schema
+
+.env
+Makefile

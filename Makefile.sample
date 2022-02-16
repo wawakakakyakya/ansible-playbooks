@@ -1,0 +1,20 @@
+
+target := localhost
+usePass ?= -
+usePass := $(if $(usePass:-=),$(usePass),-k)
+user := ansibleUser
+
+
+check:
+	ansible-playbook -i inventories/kube_adm.yml playbook.yml --check --diff -k -vvv
+
+syntax-check:
+	ansible-playbook -i <hosts> <playbook.yml> --syntax-check
+
+ping:
+	echo ${usePass}
+	ansible $(host) -m ping -k
+
+gatherFact:
+	echo ${usePass}
+	ansible -i $(target), -u ansibleUser -m setup all -k
