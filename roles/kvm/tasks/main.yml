@@ -1,0 +1,47 @@
+- name: install kvm
+  block:
+    - name: Install kvm to RedHat/CentOS8
+      dnf:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - qemu-kvm
+        - libvirt
+        - virt-install
+      become: true
+      when: ansible_facts.distribution_major_version == '8'
+    - name: Install kvm to RedHat/CentOS7
+      yum:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - qemu-kvm
+        - libvirt
+        - virt-install
+      become: true
+      when: ansible_facts.distribution_major_version == '7'
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Install kvm to Debian/Ubuntu
+  block:
+    - name: Install kvm to Debian/Ubuntu
+      apt:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - qemu-kvm
+        - libvirt-bin
+        - ubuntu-vm-builder
+        - bridge-utils
+      become: true
+    - name: setfacl
+      ansible.builtin.command: setfacl -m u:"{{ ansible_user }} ":rw /dev/kvm
+      become: true
+  when: ansible_facts.os_family == "Debian"
+
+- name: run kvm
+  ansible.builtin.systemd:
+    state: started
+    name: libvirtd
+    enabled: yes
+  become: true

@@ -1,0 +1,4 @@
+dependencies:
+  - role: kvm
+    become: true
+  - role: oci_kata_containers

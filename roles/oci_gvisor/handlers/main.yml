@@ -1,0 +1,9 @@
+- name: check_docker_installed
+  ansible.builtin.command: which docker
+  register: is_docker_installed
+  ignore_errors: true
+
+- name: reload_docker
+  ansible.builtin.command: systemctl reload docker
+  become: true
+  when: is_docker_installed is succeeded

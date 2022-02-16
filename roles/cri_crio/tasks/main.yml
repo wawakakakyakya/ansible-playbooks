@@ -1,0 +1,124 @@
+- name: Copy kernel config
+  ansible.builtin.copy:
+    src: 99-kubernetes-cri.conf
+    dest: "/etc/sysctl.d/99-kubernetes-cri.conf"
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Copy config for load module when boot
+  ansible.builtin.copy:
+    src: crio-module.conf
+    dest: /etc/modules-load.d/cri-o.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Loak Kernel Modules
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop:
+    - overlay
+    - br_netfilter
+  become: true
+  register: load_kernel_mod
+
+- name: Load kernel config
+  ansible.builtin.command: sysctl --system
+  become: true
+  when: load_kernel_mod.changed
+
+- name: Install cri-o
+  block:
+    - name: Get cri-o latest release
+      uri:
+        url: https://api.github.com/repos/cri-o/cri-o/releases/latest?per_page=1
+        return_content: true
+      register: get_cri_stdout
+
+    - name: Get cri-o latest ver
+      ansible.builtin.shell:
+        cmd: grep -E -o "[0-9]?\.[0-9]+\.[0-9]+" | head -n 1
+        stdin: "{{ get_cri_stdout.json.assets[0].browser_download_url }}"
+      register: latest_crio
+
+    # https://download.opensuse.org/repositories/devel:/kubic:/libcontainers:/stable:/cri-o:/
+
+    # k8sとバージョンを合わせること
+    - name: Get cri-o repo
+      get_url:
+        url: "https://download.opensuse.org/repositories/devel:{{ item }}"
+        dest: /etc/yum.repos.d
+        mode: "0440"
+      loop:
+        - "/kubic:/libcontainers:/stable/CentOS_8/devel:kubic:libcontainers:stable.repo"
+        - "/kubic:/libcontainers:/stable:/cri-o:/1.23:/1.23.0/CentOS_8/devel:kubic:libcontainers:stable:cri-o:1.23:1.23.0.repo"
+      become: true
+
+    - name: Install cri-o with RedHat/CentOS8
+      dnf:
+        name: cri-o
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '8'
+      become: true
+
+    - name: Install cri-o with RedHat/CentOS7
+      yum:
+        name: cri-o
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '7'
+      become: true
+
+  when: ansible_facts.os_family == "RedHat"
+
+- name: copy cri-o conf
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - src: 99-gvisor.conf
+      dest: /etc/crio/crio.conf.d/99-gvisor.conf
+    - src: 99-kata-containers.conf
+      dest: /etc/crio/crio.conf.d/99-kata-containers.conf
+    - src: 01-log-level.conf
+      dest: /etc/crio/crio.conf.d/01-log-level.conf
+    - src: registries.conf
+      dest: /etc/containers/registries.conf
+  become: true
+
+- name: Start crio
+  ansible.builtin.systemd:
+    state: started
+    daemon_reload: yes
+    name: crio
+    enabled: true
+  become: true
+# - name: Get cri-o v1.23 release binaries
+#   get_url:
+#     url: "https://storage.googleapis.com/cri-o/artifacts/cri-o.amd64.9b7f5ae815c22a1d754abfbc2890d8d4c10e240d.tar.gz"
+#     dest: /tmp/cri-o.amd64.1-23.releases.tar.gz
+
+# - name: unarchive bin
+#   ansible.builtin.shell: "tar xfO /tmp/cri-o.amd64.1-23.releases.tar.gz cri-o/bin/{{ item }} > /usr/local/bin/{{ item }}"
+#   loop:
+#     - conmon
+#     - runc
+#   become: true
+
+# - name: Example clone of a single branch
+#   ansible.builtin.git:
+#     repo: https://github.com/containers/conmon
+#     dest: /tmp/conmon
+#     version: main
+
+# - name: Install conmon
+#   ansible.builtin.shell: |
+#     source /root/.bash_profile
+#     cd /tmp/conmon
+#     make
+#     make install
+#   become: true

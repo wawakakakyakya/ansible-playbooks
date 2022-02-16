@@ -1,0 +1,6 @@
+[advanced-virt]
+name=Advanced Virtualization
+baseurl=http://mirror.centos.org/\$contentdir/\$releasever/virt/\$basearch/advanced-virtualization
+enabled=1
+gpgcheck=1
+skip_if_unavailable=1

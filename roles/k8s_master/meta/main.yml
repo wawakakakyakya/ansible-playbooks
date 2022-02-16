@@ -1,0 +1,9 @@
+dependencies:
+  - role: kubernetes
+    become: true
+  - role: make_dirs
+    become: true
+    vars:
+      dirs:
+        - /root/.kube
+        - "/home/{{ ansible_user }}/.kube"

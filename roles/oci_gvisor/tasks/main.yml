@@ -1,0 +1,27 @@
+- name: get gvisor
+  get_url:
+    url: "https://storage.googleapis.com/gvisor/releases/release/latest/{{ ansible_facts.architecture }}/{{ item }}"
+    dest: /usr/local/bin
+    mode: "0440"
+  loop:
+    - runsc
+    - containerd-shim-runsc-v1
+  become: true
+
+- name: Install gvisor
+  ansible.builtin.command: /usr/local/bin/runsc install
+  notify:
+    - check_docker_installed
+    - reload_docker
+  become: true
+
+- name: Give insecure permissions to an existing file
+  ansible.builtin.file:
+    path: /usr/local/bin/{{ item }}
+    owner: root
+    group: root
+    mode: 755
+  loop:
+    - runsc
+    - containerd-shim-runsc-v1
+  become: true

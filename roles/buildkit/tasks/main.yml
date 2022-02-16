@@ -1,0 +1,26 @@
+- name: Get latest buildkit version
+  ansible.builtin.shell: basename $(curl -fsSLI -o /dev/null -w  %{url_effective} https://github.com/moby/buildkit/releases/latest)
+  register: latest_bld_ver
+
+- name: Get buildkit archive
+  get_url:
+    url: "https://github.com/moby/buildkit/releases/download/{{ latest_bld_ver.stdout }}/buildkit-{{ latest_bld_ver.stdout }}.linux-amd64.tar.gz"
+    dest: /tmp/buildkit.tar.gz
+    mode: 755
+  become: true
+
+- name: unarchive buildkit
+  ansible.builtin.unarchive:
+    src: /tmp/buildkit.tar.gz
+    dest: /usr/local/buildkit
+    remote_src: yes
+  become: true
+
+- name: Add path
+  ansible.builtin.lineinfile:
+    path: "/root/.bash_profile"
+    insertafter: "^PATH="
+    line: "PATH=$PATH:/usr/local/buildkit/bin"
+    firstmatch: yes
+    state: present
+  become: true

@@ -1,0 +1,12 @@
+{
+  "default-runtime": "kata-fc",
+  "runtimes": {
+    "kata-fc": {
+      "path": "/opt/kata/bin/kata-fc"
+    },
+    "kata-qemu": {
+      "path": "/opt/kata/bin/kata-qemu"
+    }
+  },
+  "storage-driver": "devicemapper"
+}

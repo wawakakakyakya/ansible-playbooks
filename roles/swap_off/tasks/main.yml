@@ -1,0 +1,8 @@
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  ansible.builtin.command: swapoff -a
+  become: true
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (2/2)
+  ansible.builtin.command: sed -i /etc/fstab -e '/swap/s/^/#/g'
+  register: fstab
+  become: true

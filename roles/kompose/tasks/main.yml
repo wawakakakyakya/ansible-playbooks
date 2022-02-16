@@ -1,0 +1,10 @@
+- name: Get latest kompose version
+  ansible.builtin.shell: basename $(curl -fsSLI -o /dev/null -w  %{url_effective} https://github.com/kubernetes/kompose/releases/latest)
+  register: latest_kps_ver
+
+- name: Get kompose binary
+  get_url:
+    url: "https://github.com/kubernetes/kompose/releases/download/{{ latest_kps_ver.stdout }}/kompose-linux-amd64"
+    dest: /usr/local/bin/kompose
+    mode: 755
+  become: true

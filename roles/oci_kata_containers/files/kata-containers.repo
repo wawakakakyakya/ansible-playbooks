@@ -1,0 +1,6 @@
+[kata-containers]
+name=Kata Containers
+baseurl=https://vault.centos.org/8.5.2111/virt/x86_64/kata-containers/
+enabled=1
+gpgcheck=1
+skip_if_unavailable=1
