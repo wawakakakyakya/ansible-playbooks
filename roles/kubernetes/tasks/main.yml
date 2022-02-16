@@ -1,0 +1,52 @@
+# Wants=docker.socket crio.service
+
+- name: check crio used
+  ansible.builtin.command: which crio
+  register: use_crio
+  ignore_errors: true
+
+- name: copy repo
+  ansible.builtin.copy:
+    src: kubernetes.repo
+    dest: /etc/yum.repos.d/k8s.repo
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Install the latest version of k8s
+  dnf:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - kubelet
+    - kubeadm
+    - kubectl
+  become: true
+
+- name: Make sure a kubelet is running
+  ansible.builtin.systemd:
+    state: started
+    name: kubelet
+    enabled: yes
+  become: true
+
+- name: copy runtime config
+  ansible.builtin.copy:
+    src: 0-crio.conf
+    dest: "/etc/systemd/system/kubelet.service.d/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - 0-crio.conf
+    - 11-cgroups.conf
+  become: true
+
+- name: Supports a validate command
+  ansible.builtin.replace:
+    path: /usr/lib/systemd/system/kubelet.service
+    regexp: "^WantedBy"
+    replace: "WantedBy=crio.service"
+  when: use_crio.rc == 0
+  notify: Restart_kubelet

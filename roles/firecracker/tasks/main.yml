@@ -1,0 +1,68 @@
+- name: Get firecracker latest release
+  uri:
+    url: https://api.github.com/repos/firecracker-microvm/firecracker/releases/latest?per_page=1
+    return_content: true
+  register: get_firecracker_stdout
+
+- name: Get firecracker latest ver
+  ansible.builtin.shell:
+    cmd: grep -E -o "[0-9]?\.[0-9]+\.[0-9]+" | head -n 1
+    stdin: "{{ get_firecracker_stdout.json.assets[0].browser_download_url }}"
+  register: latest_firecracker
+
+- name: Get firecracker archive
+  get_url:
+    url: "https://github.com/firecracker-microvm/firecracker/releases/download/v{{ latest_firecracker.stdout }}/firecracker-v{{ latest_firecracker.stdout }}-{{ ansible_facts.architecture }}.tgz"
+    dest: /tmp/firecracker.tgz
+    mode: 755
+  become: true
+
+- name: Get firecracker bin
+  ansible.builtin.shell: "tar xfO /tmp/firecracker.tgz release-v{{ latest_firecracker.stdout }}-{{ ansible_facts.architecture }}/firecracker-v{{ latest_firecracker.stdout }}-{{ ansible_facts.architecture }} > /tmp/firecracker"
+  become: true
+
+- name: copy firecracker to /usr/local/bin
+  ansible.builtin.copy:
+    src: /tmp/firecracker
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: yes
+  become: true
+
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "/opt/firecracker/resources/images/{{ item }}/"
+    state: directory
+    mode: "0775"
+  loop:
+    - x86_64
+    - aarch64
+  become: true
+
+- name: Get firecracker kernel and rootfs
+  get_url:
+    url: "https://s3.amazonaws.com/spec.ccfc.min/img/{{ item['src'] }}"
+    dest: "/opt/firecracker/resources/images/x86_64/{{ item['dest'] }}"
+    mode: 775
+  loop:
+    - src: quickstart_guide/x86_64/kernels/vmlinux.bin
+      dest: vmlinux.bin
+    - src: hello/fsfiles/hello-rootfs.ext4
+      dest: rootfs.ext4
+  when: ansible_facts.architecture == "x86_64"
+  become: true
+
+- name: Get firecracker kernel and rootfs
+  get_url:
+    url: "https://s3.amazonaws.com/spec.ccfc.min/img/{{ item['src'] }}"
+    dest: "/opt/firecracker/resources/images/aarch64/{{ item['dest'] }}"
+    mode: 775
+  loop:
+    - src: quickstart_guide/aarch64/kernels/vmlinux.bin
+      dest: vmlinux.bin
+    - src: aarch64/ubuntu_with_ssh/fsfiles/xenial.rootfs.ext4
+      dest: rootfs.ext4
+  when: ansible_facts.architecture == "aarch64"
+  become: true

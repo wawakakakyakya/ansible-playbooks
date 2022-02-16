@@ -1,0 +1,58 @@
+- name: Install kata-containers with RedHat/CentOS
+  block:
+    - name: copy kata-containers.repo
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: /etc/yum.repos.d
+        mode: "0644"
+      loop:
+        - kata-containers.repo
+        - advanced-virt.repo
+      become: true
+    - name: disable virt:rhel
+      ansible.builtin.command:
+        cmd: dnf module disable -y virt:rhel
+      become: true
+      when: ansible_facts.distribution_major_version == '8'
+    - name: Install kata-containers with RedHat/CentOS8
+      dnf:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - centos-release-advanced-virtualization
+        - kata-containers
+      become: true
+      when: ansible_facts.distribution_major_version == '8'
+  when: ansible_facts.os_family == "RedHat"
+
+- name: copy docker daemon.json
+  ansible.builtin.copy:
+    src: docker-daemon.json
+    dest: /etc/docker/daemon.json
+    mode: "0644"
+  become: true
+# - name: Get kata-containers latest release
+#   uri:
+#     url: https://api.github.com/repos/kata-containers/kata-containers/releases/latest?per_page=1
+#     return_content: true
+#   register: get_katacon_stdout
+
+# - name: Get kata-containers latest ver
+#   ansible.builtin.shell:
+#     cmd: grep -E -o "[0-9]?\.[0-9]+\.[0-9]+" | head -n 1
+#     stdin: "{{ get_katacon_stdout.json.assets[0].browser_download_url }}"
+#   register: latest_katacon
+
+# - name: Get kata-containers archive
+#   get_url:
+#     url: "https://github.com/kata-containers/kata-containers/releases/download/{{ latest_katacon.stdout }}/kata-static-{{ latest_katacon.stdout }}-{{ ansible_facts.architecture }}.tar.xz"
+#     dest: /tmp/kata-containers.tar.xz
+#     mode: 755
+#   become: true
+
+# - name: Unarchive a file with extra options
+#   ansible.builtin.unarchive:
+#     src: /tmp/kata-containers.tar.xz
+#     dest: /
+#     remote_src: yes
+#   become: true

@@ -1,0 +1,60 @@
+- name: Copy kernel config
+  ansible.builtin.copy:
+    src: "{{ item['src'] }}"
+    dest: "{{ item['dest'] }}/{{ item['src'] }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - src: containerd.conf
+      dest: /etc/modules-load.d
+    - src: 99-kubernetes-cri.conf
+      dest: /etc/sysctl.d
+  become: true
+
+- name: Load Kernel Modules
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop:
+    - overlay
+    - br_netfilter
+  become: true
+  register: load_kernel_mod
+
+- name: Load kernel config
+  ansible.builtin.command: sysctl --system
+  become: true
+  when: load_kernel_mod.changed
+
+- name: Install containerd
+  block:
+    - name: Get required packages
+      dnf:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - yum-utils
+        - device-mapper-persistent-data
+        - lvm2
+      become: true
+
+    - name: Add repo
+      dnf:
+        name: https://download.docker.com/linux/centos/docker-ce.repo
+        state: latest
+      become: true
+
+    - name: Add containerd
+      dnf:
+        name: containerd.io
+        state: latest
+        update_cache: yes
+        enabled: yes
+      become: true
+
+    - name: Start containerd with enabled
+      ansible.builtin.systemd:
+        state: started
+        name: containerd
+        enabled: yes
+
+  when: ansible_facts['distribution_major_version'] == '8'

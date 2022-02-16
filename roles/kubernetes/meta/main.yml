@@ -1,0 +1,7 @@
+dependencies:
+  - role: swap_off
+    become: true
+  - role: disable_selinux
+    become: true
+  - role: disable_firewalld
+    become: true

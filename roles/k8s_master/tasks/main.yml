@@ -1,0 +1,68 @@
+- name: Get stats of the admin.conf
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: conf_stat
+
+- name: Initialize k8s master
+  ansible.builtin.command: "kubeadm init --pod-network-cidr={{ k8s_pod_network }}"
+  become: true
+  when: "conf_stat.stat.exists == false"
+
+- name: copy require file
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ item }}/.kube/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0644"
+    remote_src: yes
+  loop:
+    - "/home/{{ ansible_user }}"
+    - /root
+  become: true
+
+# sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+- name: Get manifest
+  get_url:
+    url: "{{ item['src'] }}"
+    dest: "/etc/kubernetes/manifests/{{ item['dest'] }}"
+    mode: 644
+  loop:
+    - src: https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
+      dest: flannel.yml
+    - src: https://raw.githubusercontent.com/kubernetes/dashboard/v2.0.0/aio/deploy/recommended.yaml
+      dest: dashboard.yml
+  become: true
+
+- name: Add flannel to k8s
+  ansible.builtin.command: kubectl apply -f /etc/kubernetes/manifests/flannel.yml
+  become: true
+
+- name: enable add master to node
+  ansible.builtin.command: kubectl taint nodes --all node-role.kubernetes.io/master-
+  become: true
+
+- name: dashboard admin manifest
+  ansible.builtin.copy:
+    src: dashboard-admin.yml
+    dest: /etc/kubernetes/manifests/dashboard-admin.yml
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+
+- name: Install dashboard
+  ansible.builtin.command: "kubectl apply -f /etc/kubernetes/manifests/{{ item }}"
+  loop:
+    - dashboard-admin.yml
+    - dashboard.yml
+  become: true
+
+- name: Get dashboard token
+  ansible.builtin.shell: kubectl -n kube-system describe secret $(kubectl -n kube-system get secret | awk '/^admin-user-token-/{print $1}') | awk '$1=="token:"{print $2}'
+  become: true
+  register: dashboard_token
+
+- name: print dashboard token
+  debug: "dashboard token: {{ dashboard_token.stdout }}"
