@@ -1,0 +1,6 @@
+dependencies:
+  - role: make_dirs
+    become: true
+    vars:
+      dirs:
+        - "{{ nfs_dir }}"

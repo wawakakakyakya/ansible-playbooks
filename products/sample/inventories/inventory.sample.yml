@@ -10,6 +10,7 @@ all:
         goenv_global: false
         install_go_system: false
         python: 3.10.0
+        nfs_dir: /mnt/nfs
         install_apps:
           - git
           - patch
