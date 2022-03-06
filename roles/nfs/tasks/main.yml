@@ -1,0 +1,54 @@
+- name: Create a directory if it does not exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  become: true
+
+
+- name: Install the latest version of NFS
+  block:
+    - name: Install nfs with RedHat/CentOS8
+      dnf:
+        name: nfs-utils
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '8'
+      become: true
+
+    - name: Install nfs with RedHat/CentOS7
+      yum:
+        name: nfs-utils
+        state: latest
+      when: ansible_facts['distribution_major_version'] == '7'
+      become: true
+
+  when: ansible_facts.os_family == "RedHat"
+
+- name: Install the latest version of NFS
+  block:
+    - name: Install nfs to Debian/Ubuntu
+      apt:
+        name: nfs-kernel-server
+        state: latest
+      become: true
+
+  when: ansible_facts.os_family == "Debian"
+
+- name: copy exports
+  ansible.builtin.copy:
+    src: exports
+    dest: /etc/exports
+    owner: "{{ ansible_user_id }}"
+    group: "{{ ansible_user_id }}"
+    mode: "0644"
+  become: true
+
+- name: Start nfs
+  ansible.builtin.systemd:
+    state: started
+    name: "{{ item }}"
+    enabled: true
+  loop:
+    - rpcbind
+    - nfs-server
+  become: true
