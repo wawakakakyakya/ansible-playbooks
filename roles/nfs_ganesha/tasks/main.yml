@@ -39,6 +39,20 @@
     dest: /etc/exports
   become: true
 
+- name: Get stats of the libfsalgluster.so
+  ansible.builtin.stat:
+    path: /usr/lib64/ganesha/libfsalgluster.so
+  register: libfsalgluster_stat
+  become: true
+
+- name: Create a libfsalglusterfs.so link
+  ansible.builtin.file:
+    src: /usr/lib64/ganesha/libfsalgluster.so
+    dest: /usr/lib64/ganesha/libfsalglusterfs.so
+    state: link
+  become: true
+  when: "libfsalgluster_stat.stat.exists == false"
+
 - name: run nfs-ganesha
   ansible.builtin.systemd:
     name: nfs-ganesha
