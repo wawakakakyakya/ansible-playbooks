@@ -17,3 +17,6 @@ Makefile
 # docker
 docker/*/id_rsa*
 docker/product/sshd_config
+
+roles/nfs_ganesha/files/exports
+roles/nfs_ganesha/templates/*

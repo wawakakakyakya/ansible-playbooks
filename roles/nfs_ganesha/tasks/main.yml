@@ -1,0 +1,61 @@
+- name: Install nfs-ganesha with RedHat/CentOS
+  block:
+    - name: Install nfs-ganesha with RedHat/CentOS8
+      block:
+        - name: Install nfs-ganesha
+          dnf:
+            name: centos-release-nfs-ganesha30
+            state: latest
+          become: true
+        - name: disable nfs-ganesha repo
+          ansible.builtin.replace:
+            path: /etc/yum.repos.d/CentOS-NFS-Ganesha-3.repo
+            regexp: "enabled=1"
+            replace: "enabled=0"
+          become: true
+        - name: Install nfs-ganesha
+          dnf:
+            name: nfs-ganesha-gluster
+            state: latest
+            enablerepo: centos-nfs-ganesha3
+          become: true
+      when: ansible_facts.distribution_major_version == '8'
+  when: ansible_facts.os_family == "RedHat"
+
+- name: copy nfs-ganesha config
+  ansible.builtin.template:
+    src: ganesha.conf.j2
+    dest: /etc/ganesha/ganesha.conf
+  # with_filetree:
+  #   - templates/
+  # when: item.state == 'file' and item.path is match("*.conf.j2$")
+  with_fileglob:
+    - "../templates/*.conf.j2"
+  become: true
+
+- name: copy exports
+  ansible.builtin.copy:
+    src: exports
+    dest: /etc/exports
+  become: true
+
+- name: Get stats of the libfsalgluster.so
+  ansible.builtin.stat:
+    path: /usr/lib64/ganesha/libfsalgluster.so
+  register: libfsalgluster_stat
+  become: true
+
+- name: Create a libfsalglusterfs.so link
+  ansible.builtin.file:
+    src: /usr/lib64/ganesha/libfsalgluster.so
+    dest: /usr/lib64/ganesha/libfsalglusterfs.so
+    state: link
+  become: true
+  when: "libfsalgluster_stat.stat.exists == false"
+
+- name: run nfs-ganesha
+  ansible.builtin.systemd:
+    name: nfs-ganesha
+    state: started
+    enabled: yes
+  become: true
