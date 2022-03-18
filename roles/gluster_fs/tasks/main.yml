@@ -1,0 +1,57 @@
+# https://docs.rockylinux.org/de/guides/file_sharing/glusterfs/
+
+# $ sudo pvcreate /dev/sdb
+# $ sudo vgcreate vg_data /dev/sdb
+# $ sudo lvcreate -l 100%FREE -n lv_data vg_data
+# $ sudo mkfs.xfs /dev/vg_data/lv_data
+# $ sudo mkdir -p /data/glusterfs/volume1
+
+# dnf install glusterfs glusterfs-libs glusterfs-server
+
+# https://wiki.centos.org/SpecialInterestGroup/Storage/gluster-Quickstart
+- name: Install GlusterFS with RedHat/CentOS
+  block:
+    - name: Install GlusterFS with RedHat/CentOS8
+      block:
+        - name: Install GlusterFS
+          dnf:
+            name: centos-release-gluster9
+            state: latest
+          become: true
+        - name: copy glusterfs repo
+          ansible.builtin.copy:
+            src: glusterfs9.repo
+            dest: /etc/yum.repos.d/CentOS-Gluster-9.repo
+            owner: "{{ ansible_user_id }}"
+            group: "{{ ansible_user_id }}"
+            mode: "0644"
+          become: true
+        - name: Install GlusterFS
+          dnf:
+            name: "{{ item }}"
+            state: latest
+          loop:
+            - glusterfs
+            - glusterfs-libs
+            - glusterfs-server
+          become: true
+      when: ansible_facts.distribution_major_version == '8'
+  when: ansible_facts.os_family == "RedHat"
+
+- name: run glusterfs
+  ansible.builtin.systemd:
+    name: glusterd
+    state: started
+    enabled: yes
+  become: true
+  register: gluster_install_result
+
+- name: Copy kernel config
+  ansible.builtin.copy:
+    src: glusterfs.conf
+    dest: /etc/modules-load.d/glusterfs.conf
+    owner: root
+    group: root
+    mode: "0644"
+  become: true
+  when: gluster_install_result is succeeded
